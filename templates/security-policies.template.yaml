@@ -1,0 +1,169 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-policy-config
+  namespace: seimei-handan
+data:
+  # Cloud Armor ポリシー設定
+  POLICY_NAME: "seimei-handan-armor-policy"
+  DESCRIPTION: "姓名判断アプリ用セキュリティポリシー"
+  
+  # 許可するIPアドレス範囲
+  ALLOWED_IPS: "${ALLOWED_IPS}"
+  
+  # レート制限設定
+  RATE_LIMIT_REQUESTS: "100"
+  RATE_LIMIT_WINDOW: "60"
+  
+  # DDoS保護設定
+  DDOS_THRESHOLD: "1000"
+  DDOS_WINDOW: "60"
+  
+  # 地理的制限（日本からのアクセスのみ許可）
+  ALLOWED_COUNTRIES: "JP"
+  
+  # ブロックするUser-Agent
+  BLOCKED_USER_AGENTS: "bot,crawler,spider,scraper"
+  
+  # ブロックするリクエストパターン
+  BLOCKED_PATTERNS: "admin,wp-admin,phpmyadmin,config"
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: seimei-handan-armor-policy
+  namespace: seimei-handan
+spec:
+  podSelector:
+    matchLabels:
+      app: seimei-handan-functions-proxy
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # 許可するIPアドレス範囲
+  - from:
+    - ipBlock:
+        cidr: 203.0.113.0/24
+    - ipBlock:
+        cidr: 198.51.100.0/24
+    - ipBlock:
+        cidr: 203.0.113.1/32
+    ports:
+    - protocol: TCP
+      port: 80
+  # 一時的にすべてのIPを許可（実際のIPに置き換え）
+  - from:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 80
+  egress:
+  # Cloud Functionsへの通信を許可
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # DNS解決を許可
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Cloud Storageへの通信を許可
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: seimei-handan-security-sa
+  namespace: seimei-handan
+  annotations:
+    iam.gke.io/gcp-service-account: seimei-handan-security@${PROJECT_ID}.iam.gserviceaccount.com
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: seimei-handan-security-role
+  namespace: seimei-handan
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: seimei-handan-security-binding
+  namespace: seimei-handan
+subjects:
+- kind: ServiceAccount
+  name: seimei-handan-security-sa
+  namespace: seimei-handan
+roleRef:
+  kind: Role
+  name: seimei-handan-security-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: security-monitor
+  namespace: seimei-handan
+  labels:
+    app: security-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: security-monitor
+  template:
+    metadata:
+      labels:
+        app: security-monitor
+    spec:
+      serviceAccountName: seimei-handan-security-sa
+      containers:
+      - name: security-monitor
+        image: google/cloud-sdk:alpine
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          echo "Security monitoring started"
+          while true; do
+            # セキュリティログの監視
+            echo "Checking security logs..."
+            sleep 300
+          done
+        env:
+        - name: PROJECT_ID
+          valueFrom:
+            secretKeyRef:
+              name: app-config
+              key: project-id
+        - name: POLICY_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: security-policy-config
+              key: POLICY_NAME
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"

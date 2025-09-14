@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vpc-config
+  namespace: seimei-handan
+data:
+  VPC_NAME: "seimei-handan-vpc"
+  PROJECT_ID: "${PROJECT_ID}"
+  REGION: "asia-northeast1"
+  SUBNET_NAME: "seimei-handan-subnet"
+  SUBNET_CIDR: "10.0.0.0/24"
+  SECONDARY_RANGE_NAME: "seimei-handan-pods"
+  SECONDARY_RANGE_CIDR: "10.1.0.0/16"
+  SERVICES_RANGE_NAME: "seimei-handan-services"
+  SERVICES_RANGE_CIDR: "10.2.0.0/16"
+  PROTOCOL: "seimei-handan-protocol"
+  DEPENDENCIES: "seimei-handan-dependencies"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-config
+  namespace: seimei-handan
+data:
+  CLUSTER_NAME: "${CLUSTER_NAME}"
+  NODE_POOL_NAME: "seimei-handan-pool"
+  MACHINE_TYPE: "e2-micro"  # 最小限のコストで運用
+  DISK_SIZE: "20"
+  DISK_TYPE: "pd-standard"
+  IMAGE_TYPE: "COS_CONTAINERD"
+  MIN_NODE_COUNT: "1"
+  MAX_NODE_COUNT: "3"
+  INITIAL_NODE_COUNT: "1"

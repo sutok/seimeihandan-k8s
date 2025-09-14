@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloud-storage-config
+  namespace: seimei-handan
+data:
+  BUCKET_NAME: "seimei-handan-bucket"
+  PROJECT_ID: "${PROJECT_ID}"
+  REGION: "asia-northeast1"
+  STORAGE_CLASS: "STANDARD"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloud-storage-credentials
+  namespace: seimei-handan
+type: Opaque
+data:
+  # 実際のサービスアカウントキーをBase64エンコードして設定
+  # 例: echo -n '{"type":"service_account",...}' | base64
+  service-account-key.json: ""

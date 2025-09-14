@@ -1,0 +1,43 @@
+# 環境変数ファイル（機密情報を含む）
+.env
+.env.local
+.env.production
+
+# 生成されたマニフェストファイル（機密情報を含む）
+vpc-config.yaml
+cloud-functions-integration.yaml
+cloud-storage-config.yaml
+nginx-config.yaml
+cloud-functions-proxy.yaml
+security-policies.yaml
+network-policy.yaml
+secrets.yaml
+
+# 一時ファイル
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# サービスアカウントキー
+*.json
+!templates/*.json
+
+# ログファイル
+*.log
+
+# 一時ファイル
+*.tmp
+*.temp
+
+# OS固有のファイル
+.DS_Store
+Thumbs.db
+
+# IDE設定
+.vscode/
+.idea/
+
+# バックアップファイル
+*.bak
+*.backup

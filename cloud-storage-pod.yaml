@@ -1,0 +1,3 @@
+# Cloud StorageはCloud Functionsからのみアクセスするため、
+# Kubernetes内での直接アクセスは不要
+# このファイルは削除またはコメントアウト

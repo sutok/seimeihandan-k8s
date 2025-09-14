@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seimei-handan-functions-proxy
+  namespace: seimei-handan
+  labels:
+    app: seimei-handan-functions-proxy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: seimei-handan-functions-proxy
+  template:
+    metadata:
+      labels:
+        app: seimei-handan-functions-proxy
+    spec:
+      containers:
+      - name: functions-proxy
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        env:
+        - name: CLOUD_FUNCTIONS_URL
+          value: "https://asia-northeast1-${PROJECT_ID}.cloudfunctions.net/seimei-handan-api"
+        - name: PROJECT_ID
+          valueFrom:
+            secretKeyRef:
+              name: app-config
+              key: project-id
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+        - name: cloud-storage-config
+          mountPath: /etc/config
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+      - name: cloud-storage-config
+        configMap:
+          name: cloud-storage-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seimei-handan-functions-service
+  namespace: seimei-handan
+  labels:
+    app: seimei-handan-functions-proxy
+spec:
+  selector:
+    app: seimei-handan-functions-proxy
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  type: ClusterIP

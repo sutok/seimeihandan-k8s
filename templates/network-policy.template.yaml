@@ -1,0 +1,59 @@
+# 修正されたアーキテクチャ:
+# Frontend → Cloud Armor → API Gateway → Cloud Functions → Cloud Storage
+# Cloud ArmorはAPI Gatewayの前段で動作するため、
+# Kubernetes内でのNetworkPolicyは基本的なもののみ設定
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: seimei-handan-basic-security
+  namespace: seimei-handan
+spec:
+  podSelector:
+    matchLabels:
+      app: seimei-handan-functions-proxy
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # API Gatewayからの通信のみ許可
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 80
+  egress:
+  # Cloud Functionsへの通信を許可
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # DNS解決を許可
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seimei-handan-api-gateway
+  namespace: seimei-handan
+  labels:
+    app: seimei-handan-gateway
+spec:
+  selector:
+    app: seimei-handan-functions-proxy
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    protocol: TCP
+  type: LoadBalancer
+  # Cloud Armorが前段でIP制限を行うため、
+  # ここでは基本的な設定のみ
