@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloud-functions-config
+  namespace: seimei-handan
+data:
+  FUNCTION_NAME: "seimei-handan-api"
+  FUNCTION_URL: "https://asia-northeast1-${PROJECT_ID}.cloudfunctions.net/seimei-handan-api"
+  PROJECT_ID: "${PROJECT_ID}"
+  REGION: "asia-northeast1"
+  RUNTIME: "python39"
+  TRIGGER_TYPE: "https"
+  MAX_INSTANCES: "10"
+  MIN_INSTANCES: "0"
+  TIMEOUT: "60s"
+  MEMORY: "256MB"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seimei-handan-functions-endpoint
+  namespace: seimei-handan
+  labels:
+    app: seimei-handan-functions
+spec:
+  type: ExternalName
+  externalName: asia-northeast1-${PROJECT_ID}.cloudfunctions.net
+  ports:
+  - port: 443
+    protocol: TCP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: seimei-handan-ingress
+  namespace: seimei-handan
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "seimei-handan-ip"
+    networking.gke.io/managed-certificates: "seimei-handan-ssl-cert"
+    kubernetes.io/ingress.allow-http: "true"
+spec:
+  rules:
+  - host: ${DOMAIN_NAME}
+    http:
+      paths:
+      - path: /api/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: seimei-handan-functions-service
+            port:
+              number: 80
+      - path: /health
+        pathType: Exact
+        backend:
+          service:
+            name: seimei-handan-functions-service
+            port:
+              number: 80
+
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: seimei-handan-ssl-cert
+  namespace: seimei-handan
+spec:
+  domains:
+  - ${DOMAIN_NAME}
